@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme for dark mode -->
+    <style name="Theme.SpendWise" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Splash screen theme for dark mode -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- The background color will be taken from your dark theme -->
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
+
+        <!-- The icon to display -->
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_round</item>
+
+        <!-- The theme to transition to -->
+        <item name="postSplashScreenTheme">@style/Theme.SpendWise</item>
+    </style>
+</resources>

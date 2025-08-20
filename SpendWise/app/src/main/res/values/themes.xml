@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The base theme for your application. -->
+    <style name="Theme.SpendWise" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- The theme for the splash screen -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- Set the splash screen background color -->
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
+
+        <!-- Set the icon to display on the splash screen -->
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_round</item>
+
+        <!-- Set the theme that the app will transition to after the splash screen -->
+        <item name="postSplashScreenTheme">@style/Theme.SpendWise</item>
+    </style>
+</resources>
