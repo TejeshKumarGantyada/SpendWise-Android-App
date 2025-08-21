@@ -7,6 +7,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -44,10 +45,12 @@ fun TransactionScreen(
     // --- State for the form ---
     val expenseCategories by viewModel.expenseCategories.collectAsState()
     val incomeCategories by viewModel.incomeCategories.collectAsState()
+    val accounts by viewModel.accountsForForms.collectAsState()
     var transactionType by remember { mutableStateOf("Expense") }
     var amount by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
+    var selectedAccountId by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf(System.currentTimeMillis()) }
 
     // --- OCR and Camera Logic ---
@@ -90,16 +93,17 @@ fun TransactionScreen(
                     category = transaction.category
                     note = transaction.note
                     selectedDate = transaction.date
+                    selectedAccountId = transaction.accountId
                 }
             }
         }
     }
 
-    // Effect to set a default category
-    LaunchedEffect(transactionType, expenseCategories, incomeCategories) {
-        if (!isEditing || category.isEmpty()) {
+    LaunchedEffect(transactionType, expenseCategories, incomeCategories, accounts) {
+        if (!isEditing) {
             val categories = if (transactionType == "Expense") expenseCategories else incomeCategories
             category = categories.firstOrNull()?.name ?: ""
+            selectedAccountId = accounts.firstOrNull()?.id ?: ""
         }
     }
 
@@ -194,6 +198,44 @@ fun TransactionScreen(
                 }
             )
 
+            var accountExpanded by remember { mutableStateOf(false) }
+            val selectedAccountName = accounts.find { it.id == selectedAccountId }?.name ?: "Select Account"
+
+            ExposedDropdownMenuBox(
+                expanded = accountExpanded,
+                onExpandedChange = { accountExpanded = it } // let the box handle expansion
+            ) {
+                OutlinedTextField(
+                    value = selectedAccountName,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Account") },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded)
+                    },
+                    modifier = Modifier
+                        .menuAnchor() // required for positioning
+                        .fillMaxWidth()
+                )
+
+                ExposedDropdownMenu(
+                    expanded = accountExpanded,
+                    onDismissRequest = { accountExpanded = false }
+                ) {
+                    accounts.forEach { account ->
+                        DropdownMenuItem(
+                            text = { Text(account.name) },
+                            onClick = {
+                                selectedAccountId = account.id
+                                accountExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+
+
             // --- FIXED DROPDOWN ---
             var categoryExpanded by remember { mutableStateOf(false) }
             val categoriesToShow = if (transactionType == "Expense") expenseCategories else incomeCategories
@@ -240,6 +282,7 @@ fun TransactionScreen(
                     val transactionAmount = amount.toDoubleOrNull() ?: 0.0
                     val transactionToSave = Transaction(
                         id = if (isEditing) transactionId else UUID.randomUUID().toString(),
+                        accountId = selectedAccountId,
                         amount = transactionAmount,
                         category = category,
                         note = note,

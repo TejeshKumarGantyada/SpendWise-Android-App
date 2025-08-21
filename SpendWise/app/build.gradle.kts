@@ -125,4 +125,8 @@ dependencies {
 
     // For the modern Splash Screen API
     implementation("androidx.core:core-splashscreen:1.0.1")
+
+    // Google Sign-In for Firebase Authentication
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+
 }

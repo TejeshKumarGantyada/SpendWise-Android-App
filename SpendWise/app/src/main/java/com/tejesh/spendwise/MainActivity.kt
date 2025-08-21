@@ -6,6 +6,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -15,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -23,6 +26,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.tejesh.spendwise.Screens.AboutScreen
+import com.tejesh.spendwise.Screens.AccountsScreen
 import com.tejesh.spendwise.Screens.AllTransactionsScreen
 import com.tejesh.spendwise.Screens.BudgetsScreen
 import com.tejesh.spendwise.Screens.ChartsScreen
@@ -35,15 +39,21 @@ import com.tejesh.spendwise.Screens.Screen
 import com.tejesh.spendwise.Screens.SettingsScreen
 import com.tejesh.spendwise.Screens.TransactionScreen
 import com.tejesh.spendwise.Screens.TransactionViewModel
+import com.tejesh.spendwise.Screens.TransferScreen
 import com.tejesh.spendwise.Screens.auth.AuthViewModel
+import com.tejesh.spendwise.Screens.auth.GoogleAuthUiClient
 import com.tejesh.spendwise.Screens.auth.SignInScreen
 import com.tejesh.spendwise.Screens.auth.SignUpScreen
 import com.tejesh.spendwise.Screens.settings.SettingsViewModel
 import com.tejesh.spendwise.ui.theme.SpendWiseTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject // Inject the client here
+    lateinit var googleAuthUiClient: GoogleAuthUiClient
 
     private val transactionViewModel: TransactionViewModel by viewModels()
     private val authViewModel: AuthViewModel by viewModels()
@@ -80,7 +90,11 @@ class MainActivity : ComponentActivity() {
                         popExitTransition = { slideOutHorizontally(targetOffsetX = { 1000 }) }
                     ) {
                         composable("sign_in") {
-                            SignInScreen(navController = authNavController, authViewModel = authViewModel)
+                            SignInScreen(
+                                navController = authNavController,
+                                authViewModel = authViewModel,
+                                googleAuthUiClient = googleAuthUiClient // Pass it to the screen
+                            )
                         }
                         composable("sign_up") {
                             SignUpScreen(navController = authNavController, authViewModel = authViewModel)
@@ -127,10 +141,16 @@ class MainActivity : ComponentActivity() {
                                     viewModel = transactionViewModel,
                                     authViewModel = authViewModel,
                                     onTransactionClick = { id -> navController.navigate("transaction/$id") },
-                                    onAddTransaction = { navController.navigate("transaction/new") },
+                                    onAddTransaction = { type ->
+                                        when (type) {
+                                            "Transfer" -> navController.navigate(Screen.Transfer.route)
+                                            else -> navController.navigate("transaction/new") // For Income/Expense
+                                        }
+                                    },
                                     onNavigateToBudgets = { navController.navigate(Screen.Budgets.route) },
                                     onNavigateToAllTransactions = { navController.navigate(Screen.AllTransactions.route) },
-                                    onNavigateToProfile = { navController.navigate(Screen.Profile.route) }
+                                    onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
+                                    onNavigateToAccounts = { navController.navigate(Screen.Accounts.route) }
                                 )
                             }
                             composable(Screen.Charts.route) { ChartsScreen(viewModel = transactionViewModel) }
@@ -160,6 +180,15 @@ class MainActivity : ComponentActivity() {
                                     viewModel = transactionViewModel,
                                     transactionId = id,
                                     onNavigateUp = { navController.popBackStack() }
+                                )
+                            }
+                            composable(Screen.Accounts.route) {
+                                AccountsScreen(viewModel = transactionViewModel)
+                            }
+                            composable(Screen.Transfer.route) {
+                                TransferScreen(
+                                    navController = navController,
+                                    viewModel = transactionViewModel
                                 )
                             }
                         }

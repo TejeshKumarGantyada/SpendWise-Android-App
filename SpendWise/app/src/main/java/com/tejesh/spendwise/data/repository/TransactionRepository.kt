@@ -19,6 +19,7 @@ class TransactionRepository @Inject constructor(
     private val recurringTransactionDao: RecurringTransactionDao,
     private val budgetDao: BudgetDao,
     private val categoryDao: CategoryDao,
+    private val accountDao: AccountDao,
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
 ) {
@@ -30,11 +31,13 @@ class TransactionRepository @Inject constructor(
     private fun getRecurringTransactionsCollection() = auth.currentUser?.uid?.let { firestore.collection("users").document(it).collection("recurring_transactions") }
     private fun getBudgetsCollection() = auth.currentUser?.uid?.let { firestore.collection("users").document(it).collection("budgets") }
     private fun getCategoriesCollection() = auth.currentUser?.uid?.let { firestore.collection("users").document(it).collection("categories") }
+    private fun getAccountsCollection() = auth.currentUser?.uid?.let { firestore.collection("users").document(it).collection("accounts") }
 
     // --- Live Data Flows (Read from Local DB) ---
     val allTransactions = transactionDao.getAllTransactions()
     val allRecurringTransactions = recurringTransactionDao.getAll()
     val allCategories = categoryDao.getAll()
+    val allAccounts = accountDao.getAll()
     fun getBudgetsForMonth(yearMonth: String) = budgetDao.getBudgetsForMonth(yearMonth)
     fun getTransactionById(id: String) = transactionDao.getTransactionById(id)
     suspend fun getAllTransactionsSnapshot(): List<Transaction> = transactionDao.getAllTransactionsList()
@@ -138,6 +141,22 @@ class TransactionRepository @Inject constructor(
         }
     }
 
+    suspend fun addAccount(account: Account) {
+        try {
+            getAccountsCollection()?.document(account.id)?.set(account)?.await()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error adding account", e)
+        }
+    }
+
+    suspend fun deleteAccount(account: Account) {
+        try {
+            getAccountsCollection()?.document(account.id)?.delete()?.await()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deleting account", e)
+        }
+    }
+
     // --- Sync & Listeners ---
 
     suspend fun syncAllData() {
@@ -147,6 +166,7 @@ class TransactionRepository @Inject constructor(
         syncRecurringTransactions()
         syncBudgets()
         syncCategories() // Sync categories
+        syncAccounts()
     }
 
     fun startListeners() {
@@ -156,6 +176,7 @@ class TransactionRepository @Inject constructor(
         startListeningForRecurringChanges()
         startListeningForBudgetChanges()
         startListeningForCategoryChanges() // Start category listener
+        startListeningForAccountChanges()
     }
 
     suspend fun clearLocalData() {
@@ -163,7 +184,42 @@ class TransactionRepository @Inject constructor(
         recurringTransactionDao.clearAll()
         budgetDao.clearAll()
         categoryDao.clearAll() // Clear categories
+        accountDao.clearAll()
         Log.d(TAG, "Cleared all local data.")
+    }
+
+    private suspend fun syncAccounts() {
+        try {
+            val snapshot = getAccountsCollection()?.get()?.await()
+            val accounts = snapshot?.documents?.mapNotNull { doc ->
+                doc.toObject(Account::class.java)?.copy(id = doc.id)
+            }
+            if (accounts != null) {
+                accountDao.clearAll()
+                accountDao.insertAll(accounts)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error syncing accounts", e)
+        }
+    }
+
+    private fun startListeningForAccountChanges() {
+        getAccountsCollection()?.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                Log.e(TAG, "Account listener error", error)
+                return@addSnapshotListener
+            }
+            snapshot?.documentChanges?.forEach { docChange ->
+                val account = docChange.document.toObject(Account::class.java).copy(id = docChange.document.id)
+                repoScope.launch {
+                    when (docChange.type) {
+                        com.google.firebase.firestore.DocumentChange.Type.ADDED,
+                        com.google.firebase.firestore.DocumentChange.Type.MODIFIED -> accountDao.insert(account)
+                        com.google.firebase.firestore.DocumentChange.Type.REMOVED -> accountDao.delete(account)
+                    }
+                }
+            }
+        }
     }
 
     private suspend fun syncTransactions() {
@@ -296,6 +352,7 @@ class TransactionRepository @Inject constructor(
             for (recurring in dueTransactions) {
                 val newTransaction = Transaction(
                     id = "",
+                    accountId = recurring.accountId,
                     amount = recurring.amount,
                     type = recurring.type,
                     category = recurring.category,
@@ -324,5 +381,65 @@ class TransactionRepository @Inject constructor(
         }
         calendar.set(Calendar.HOUR_OF_DAY, 0); calendar.set(Calendar.MINUTE, 0); calendar.set(Calendar.SECOND, 0); calendar.set(Calendar.MILLISECOND, 0)
         return calendar.timeInMillis
+    }
+
+    // --- NEW: Function to handle transfers ---
+    suspend fun addTransfer(
+        fromAccount: Account,
+        toAccount: Account,
+        amount: Double,
+        date: Long,
+        note: String
+    ) {
+        val transferId = UUID.randomUUID().toString()
+        val transferNote = "Transfer from ${fromAccount.name} to ${toAccount.name}" + if (note.isNotBlank()) " - $note" else ""
+
+        // 1. Create the expense transaction
+        val expenseTransaction = Transaction(
+            id = "", // Firestore will generate this
+            accountId = fromAccount.id,
+            amount = amount,
+            type = "Expense",
+            category = "Transfer", // Special category
+            date = date,
+            note = transferNote
+        )
+
+        // 2. Create the income transaction
+        val incomeTransaction = Transaction(
+            id = "", // Firestore will generate this
+            accountId = toAccount.id,
+            amount = amount,
+            type = "Income",
+            category = "Transfer", // Special category
+            date = date,
+            note = transferNote
+        )
+
+        // 3. Add both to Firestore
+        addTransaction(expenseTransaction)
+        addTransaction(incomeTransaction)
+    }
+
+    // --- NEW: A powerful function to create a loan and its corresponding credit ---
+    suspend fun createLoanAndCreditTransaction(
+        loanAccount: Account,
+        creditToAccountId: String
+    ) {
+        // 1. Create the new "Loan Taken" account (initialBalance is negative)
+        addAccount(loanAccount)
+
+        // 2. Create the corresponding income transaction to credit the other account
+        val creditTransaction = Transaction(
+            id = "", // Firestore will generate this
+            accountId = creditToAccountId,
+            // --- THIS IS THE FIX: Use the absolute (positive) value of the loan ---
+            amount = kotlin.math.abs(loanAccount.initialBalance),
+            type = "Income",
+            category = "Loan Credit", // Use a more specific category
+            date = System.currentTimeMillis(),
+            note = "Loan received from ${loanAccount.name}"
+        )
+        addTransaction(creditTransaction)
     }
 }

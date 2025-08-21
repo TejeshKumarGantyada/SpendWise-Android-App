@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.LockReset
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,6 +24,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tejesh.spendwise.Screens.auth.AuthViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,6 +39,18 @@ fun ProfileScreen(
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showEditNameDialog by remember { mutableStateOf(false) }
     var showEditPhoneDialog by remember { mutableStateOf(false) }
+    var showResetPasswordDialog by remember { mutableStateOf(false) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(authState.error) {
+        authState.error?.let {
+            scope.launch {
+                snackbarHostState.showSnackbar(it)
+            }
+        }
+    }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
@@ -46,7 +60,8 @@ fun ProfileScreen(
     )
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Profile") }) }
+        topBar = { TopAppBar(title = { Text("Profile") }) },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -121,6 +136,14 @@ fun ProfileScreen(
 
             // --- Action Buttons ---
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = { showResetPasswordDialog = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.LockReset, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
+                    Text("Reset Password")
+                }
                 Button(
                     onClick = { authViewModel.signOut() },
                     modifier = Modifier.fillMaxWidth()
@@ -141,6 +164,7 @@ fun ProfileScreen(
             }
         }
 
+        // --- Dialogs ---
         if (showDeleteConfirmDialog) {
             DeleteConfirmDialog(
                 onDismiss = { showDeleteConfirmDialog = false },
@@ -176,6 +200,17 @@ fun ProfileScreen(
                 onConfirm = { newPhone ->
                     authViewModel.updatePhoneNumber(newPhone)
                     showEditPhoneDialog = false
+                }
+            )
+        }
+
+        if (showResetPasswordDialog) {
+            ResetPasswordDialog(
+                email = user?.email ?: "",
+                onDismiss = { showResetPasswordDialog = false },
+                onConfirm = {
+                    user?.email?.let { authViewModel.sendPasswordResetEmail(it) }
+                    showResetPasswordDialog = false
                 }
             )
         }
@@ -275,6 +310,29 @@ private fun DeleteConfirmDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) {
                 Text("Delete")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+private fun ResetPasswordDialog(
+    email: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Reset Password?") },
+        text = { Text("A password reset link will be sent to your email address:\n\n$email") },
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text("Send Link")
             }
         },
         dismissButton = {

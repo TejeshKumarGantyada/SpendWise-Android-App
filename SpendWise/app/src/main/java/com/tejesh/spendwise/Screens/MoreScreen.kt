@@ -24,6 +24,7 @@ fun MoreScreen(
 ) {
     val menuItems = listOf(
         Screen.Profile,
+        Screen.Accounts,
         Screen.Recurring,
         Screen.Settings,
         Screen.About,

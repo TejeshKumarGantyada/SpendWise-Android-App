@@ -7,12 +7,12 @@ import androidx.room.PrimaryKey
 data class Transaction(
     @PrimaryKey
     val id: String,
-
+    val accountId: String,
     val amount: Double,
     val type: String, // expense or income
     val category: String,
     val date: Long,
     val note: String
 ){
-    constructor() : this("", 0.0, "", "", 0L, "")
+    constructor() : this("", "", 0.0, "", "", 0L, "")
 }

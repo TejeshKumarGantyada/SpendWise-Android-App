@@ -5,14 +5,15 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-// 1. Add Budget::class and increment version to 5
-@Database(entities = [Transaction::class, RecurringTransaction::class, Budget::class, Category::class], version = 6, exportSchema = false)
+// Increment version to 8
+@Database(entities = [Transaction::class, RecurringTransaction::class, Budget::class, Category::class, Account::class], version = 9, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun transactionDao(): TransactionDao
     abstract fun recurringTransactionDao(): RecurringTransactionDao
     abstract fun budgetDao(): BudgetDao
     abstract fun categoryDao(): CategoryDao
+    abstract fun accountDao(): AccountDao
 
     companion object {
         @Volatile

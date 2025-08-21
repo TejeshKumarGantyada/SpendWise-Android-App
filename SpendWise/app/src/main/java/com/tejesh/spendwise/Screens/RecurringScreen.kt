@@ -1,6 +1,7 @@
 package com.tejesh.spendwise.Screens
 
 import android.app.DatePickerDialog
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -158,6 +159,7 @@ fun AddRecurringTransactionForm(
 ) {
     val expenseCategories by viewModel.expenseCategories.collectAsState()
     val incomeCategories by viewModel.incomeCategories.collectAsState()
+    val accounts by viewModel.allAccounts.collectAsState()
 
     var amount by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
@@ -165,11 +167,14 @@ fun AddRecurringTransactionForm(
     var frequency by remember { mutableStateOf("Monthly") }
     val frequencies = listOf("Daily", "Weekly", "Monthly", "Yearly")
     var category by remember { mutableStateOf("") }
+    var selectedAccountId by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf(System.currentTimeMillis()) }
 
-    LaunchedEffect(transactionType, expenseCategories, incomeCategories) {
+    // Effect to set default category and account
+    LaunchedEffect(transactionType, expenseCategories, incomeCategories, accounts) {
         val categories = if (transactionType == "Expense") expenseCategories else incomeCategories
         category = categories.firstOrNull()?.name ?: ""
+        selectedAccountId = accounts.firstOrNull()?.id ?: ""
     }
 
     val context = LocalContext.current
@@ -250,6 +255,35 @@ fun AddRecurringTransactionForm(
             }
         )
 
+        // --- NEW: Account Dropdown ---
+        var accountExpanded by remember { mutableStateOf(false) }
+        val selectedAccountName = accounts.find { it.id == selectedAccountId }?.name ?: "Select Account"
+
+        ExposedDropdownMenuBox(expanded = accountExpanded, onExpandedChange = { accountExpanded = !it }) {
+            OutlinedTextField(
+                value = selectedAccountName,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Account") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth()
+                    .clickable { accountExpanded = !accountExpanded }
+            )
+            ExposedDropdownMenu(expanded = accountExpanded, onDismissRequest = { accountExpanded = false }) {
+                accounts.forEach { account ->
+                    DropdownMenuItem(
+                        text = { Text(account.name) },
+                        onClick = {
+                            selectedAccountId = account.id
+                            accountExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+
         // Category Dropdown
         var categoryExpanded by remember { mutableStateOf(false) }
         val categoriesToShow = if (transactionType == "Expense") expenseCategories else incomeCategories
@@ -325,6 +359,7 @@ fun AddRecurringTransactionForm(
                 onAdd(
                     RecurringTransaction(
                         id = UUID.randomUUID().toString(),
+                        accountId = selectedAccountId,
                         amount = amount.toDoubleOrNull() ?: 0.0,
                         type = transactionType,
                         category = category,

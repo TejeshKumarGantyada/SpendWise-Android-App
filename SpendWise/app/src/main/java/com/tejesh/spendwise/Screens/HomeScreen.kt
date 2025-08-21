@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -34,6 +35,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tejesh.spendwise.R
+import com.tejesh.spendwise.data.AccountBalance
 import com.tejesh.spendwise.data.BudgetProgress
 import com.tejesh.spendwise.data.Transaction
 import com.tejesh.spendwise.Screens.auth.AuthViewModel
@@ -50,6 +52,7 @@ fun HomeScreen(
     onNavigateToBudgets: () -> Unit,
     onNavigateToAllTransactions: () -> Unit,
     onNavigateToProfile: () -> Unit,
+    onNavigateToAccounts: () -> Unit
 ) {
     // --- State Collection ---
     val currencySymbol by viewModel.currencySymbol.collectAsState()
@@ -59,7 +62,9 @@ fun HomeScreen(
     val topBudgets by viewModel.topBudgets.collectAsState()
     val user by authViewModel.user.collectAsState()
     val aiInsightState by viewModel.aiInsightState.collectAsState()
+    val accountBalances by viewModel.accountBalances.collectAsState()
 
+    // --- Effects ---
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { /* ... */ },
@@ -94,12 +99,19 @@ fun HomeScreen(
             }
 
             item {
+                NetWorthCard(netWorth = viewModel.netWorth.collectAsState().value, currencySymbol = currencySymbol)
+                Spacer(modifier = Modifier.height(16.dp))
+                AccountsCarousel(accounts = accountBalances, currencySymbol = currencySymbol, onNavigateToAccounts = onNavigateToAccounts)
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            item {
                 DynamicHeaderCard(
                     insightState = aiInsightState,
                     monthlyIncome = monthlyIncome,
                     monthlyExpense = monthlyExpense,
                     currencySymbol = currencySymbol,
-                    onRefreshInsight = { viewModel.getFinancialInsight() }
+                    onGetInsight = { viewModel.getFinancialInsight() }
                 )
                 Spacer(modifier = Modifier.height(24.dp))
             }
@@ -154,19 +166,21 @@ fun HomeTopAppBar(
 ) {
     TopAppBar(
         title = {
-            // --- THIS IS THE CHANGE: A branded title ---
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
                     painter = painterResource(id = R.mipmap.ic_launcher_foreground),
                     contentDescription = "App Logo",
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
                 )
                 Text("SpendWise")
             }
         },
         actions = {
+            IconButton(onClick = { /* TODO: Handle notifications */ }) {
+                Icon(Icons.Outlined.Notifications, contentDescription = "Notifications")
+            }
             IconButton(onClick = onProfileClick) {
                 if (user?.photoUrl != null) {
                     AsyncImage(
@@ -192,8 +206,6 @@ fun HomeTopAppBar(
     )
 }
 
-// ... (All other composables are unchanged)
-
 @Composable
 fun Greeting(name: String) {
     val calendar = Calendar.getInstance()
@@ -216,14 +228,78 @@ fun Greeting(name: String) {
 }
 
 @Composable
+fun NetWorthCard(netWorth: Double, currencySymbol: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Net Worth", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Text(
+                text = "$currencySymbol${"%.2f".format(netWorth)}",
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+    }
+}
+
+@Composable
+fun AccountsCarousel(
+    accounts: List<AccountBalance>,
+    currencySymbol: String,
+    onNavigateToAccounts: () -> Unit
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Your Accounts", style = MaterialTheme.typography.titleLarge)
+            TextButton(onClick = onNavigateToAccounts) {
+                Text("View All")
+            }
+        }
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            items(accounts) { accountBalance ->
+                AccountBalanceCard(accountBalance = accountBalance, currencySymbol = currencySymbol)
+            }
+        }
+    }
+}
+
+@Composable
+fun AccountBalanceCard(accountBalance: AccountBalance, currencySymbol: String) {
+    val balanceColor = when (accountBalance.account.type) {
+        "Credit Card", "Loan Taken" -> if (accountBalance.currentBalance < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.primary
+    }
+    Card(
+        modifier = Modifier.width(150.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(accountBalance.account.name, style = MaterialTheme.typography.labelMedium)
+            Text(
+                text = "$currencySymbol${"%.2f".format(accountBalance.currentBalance)}",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = balanceColor
+            )
+        }
+    }
+}
+
+@Composable
 fun DynamicHeaderCard(
     insightState: AiInsightState,
     monthlyIncome: Double,
     monthlyExpense: Double,
     currencySymbol: String,
-    onRefreshInsight: () -> Unit
+    onGetInsight: () -> Unit
 ) {
-    var showInsight by remember { mutableStateOf(true) }
+    var showInsight by remember { mutableStateOf(false) }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         AnimatedContent(
@@ -233,13 +309,16 @@ fun DynamicHeaderCard(
             }, label = "HeaderCardAnimation"
         ) { isShowingInsight ->
             if (isShowingInsight) {
-                AiInsightCard(state = insightState, onRefresh = onRefreshInsight, onShowSummary = { showInsight = false })
+                AiInsightCard(state = insightState, onShowSummary = { showInsight = false })
             } else {
                 MonthlySummaryContent(
                     income = monthlyIncome,
                     expense = monthlyExpense,
                     currencySymbol = currencySymbol,
-                    onShowInsight = { showInsight = true }
+                    onShowInsight = {
+                        onGetInsight()
+                        showInsight = true
+                    }
                 )
             }
         }
@@ -249,7 +328,6 @@ fun DynamicHeaderCard(
 @Composable
 fun AiInsightCard(
     state: AiInsightState,
-    onRefresh: () -> Unit,
     onShowSummary: () -> Unit
 ) {
     Column(modifier = Modifier.padding(16.dp)) {
@@ -268,11 +346,6 @@ fun AiInsightCard(
                 state.isLoading -> CircularProgressIndicator(modifier = Modifier.size(24.dp))
                 state.error != null -> Text(state.error, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
                 state.insight != null -> Text(state.insight, style = MaterialTheme.typography.bodyMedium)
-            }
-        }
-        if (!state.isLoading) {
-            TextButton(onClick = onRefresh, modifier = Modifier.align(Alignment.End)) {
-                Text(if (state.error != null) "Retry" else "Refresh")
             }
         }
     }
@@ -396,6 +469,17 @@ fun SpeedDialFab(onFabClick: (String) -> Unit) {
 
     Box(contentAlignment = Alignment.BottomEnd) {
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            AnimatedVisibility(visible = isExpanded, enter = fadeIn() + slideInVertically { it }, exit = fadeOut() + slideOutVertically { it }) {
+                SmallFloatingActionButton(
+                    onClick = {
+                        onFabClick("Transfer")
+                        isExpanded = false
+                    },
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Icon(Icons.Default.SwapHoriz, "New Transfer")
+                }
+            }
             AnimatedVisibility(visible = isExpanded, enter = fadeIn() + slideInVertically { it }, exit = fadeOut() + slideOutVertically { it }) {
                 SmallFloatingActionButton(
                     onClick = {

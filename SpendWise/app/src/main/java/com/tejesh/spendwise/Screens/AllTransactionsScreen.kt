@@ -1,20 +1,26 @@
 package com.tejesh.spendwise.Screens
 
 import android.app.DatePickerDialog
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tejesh.spendwise.data.Transaction
-import com.tejesh.spendwise.data.TransactionFilters // Ensure this import is correct
+import com.tejesh.spendwise.data.TransactionFilters
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -46,7 +52,6 @@ fun AllTransactionsScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
         ) {
-            // --- Search and Filter UI ---
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -137,7 +142,6 @@ fun FilterSheetContent(
         Text("Filter Transactions", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
 
-        // --- UPDATED: Quick Filter Dropdown ---
         ExposedDropdownMenuBox(
             expanded = quickFilterExpanded,
             onExpandedChange = { quickFilterExpanded = !quickFilterExpanded }
@@ -162,34 +166,19 @@ fun FilterSheetContent(
                             quickFilterExpanded = false
                             val cal = Calendar.getInstance()
                             when (filter) {
-                                "All Time" -> {
-                                    startDate = null
-                                    endDate = null
-                                }
+                                "All Time" -> { startDate = null; endDate = null }
                                 "Today" -> {
                                     startDate = cal.apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0) }.timeInMillis
                                     endDate = cal.apply { set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59) }.timeInMillis
                                 }
                                 "Last Week" -> {
-                                    cal.add(Calendar.WEEK_OF_YEAR, -1)
-                                    cal.set(Calendar.DAY_OF_WEEK, cal.firstDayOfWeek)
-                                    startDate = cal.apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0) }.timeInMillis
-                                    cal.add(Calendar.DAY_OF_WEEK, 6)
-                                    endDate = cal.apply { set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59) }.timeInMillis
+                                    cal.add(Calendar.WEEK_OF_YEAR, -1); cal.set(Calendar.DAY_OF_WEEK, cal.firstDayOfWeek); startDate = cal.apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0) }.timeInMillis; cal.add(Calendar.DAY_OF_WEEK, 6); endDate = cal.apply { set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59) }.timeInMillis
                                 }
                                 "Last Month" -> {
-                                    cal.add(Calendar.MONTH, -1)
-                                    cal.set(Calendar.DAY_OF_MONTH, 1)
-                                    startDate = cal.apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0) }.timeInMillis
-                                    cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH))
-                                    endDate = cal.apply { set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59) }.timeInMillis
+                                    cal.add(Calendar.MONTH, -1); cal.set(Calendar.DAY_OF_MONTH, 1); startDate = cal.apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0) }.timeInMillis; cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH)); endDate = cal.apply { set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59) }.timeInMillis
                                 }
                                 "Last Year" -> {
-                                    cal.add(Calendar.YEAR, -1)
-                                    cal.set(Calendar.DAY_OF_YEAR, 1)
-                                    startDate = cal.apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0) }.timeInMillis
-                                    cal.set(Calendar.DAY_OF_YEAR, cal.getActualMaximum(Calendar.DAY_OF_YEAR))
-                                    endDate = cal.apply { set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59) }.timeInMillis
+                                    cal.add(Calendar.YEAR, -1); cal.set(Calendar.DAY_OF_YEAR, 1); startDate = cal.apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0) }.timeInMillis; cal.set(Calendar.DAY_OF_YEAR, cal.getActualMaximum(Calendar.DAY_OF_YEAR)); endDate = cal.apply { set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59) }.timeInMillis
                                 }
                             }
                         }
@@ -216,11 +205,7 @@ fun FilterSheetContent(
                 FilterChip(
                     selected = category in selectedCategories,
                     onClick = {
-                        selectedCategories = if (category in selectedCategories) {
-                            selectedCategories - category
-                        } else {
-                            selectedCategories + category
-                        }
+                        selectedCategories = if (category in selectedCategories) selectedCategories - category else selectedCategories + category
                     },
                     label = { Text(category) }
                 )
@@ -229,11 +214,9 @@ fun FilterSheetContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = {
-                selectedQuickFilter = "All Time"
-                onClear()
-            }, modifier = Modifier.weight(1f)) { Text("Clear") }
+            Button(onClick = { selectedQuickFilter = "All Time"; onClear() }, modifier = Modifier.weight(1f)) { Text("Clear") }
             Button(onClick = { onApply(TransactionFilters(selectedCategories, startDate, endDate)) }, modifier = Modifier.weight(1f)) { Text("Apply") }
         }
     }
 }
+

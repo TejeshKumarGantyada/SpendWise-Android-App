@@ -40,6 +40,7 @@ class RecurringTransactionWorker @AssistedInject constructor(
                     // 1. Create a new transaction from the rule
                     val newTransaction = Transaction(
                         id = "", // Firestore will generate this
+                        accountId = recurring.accountId,
                         amount = recurring.amount,
                         type = recurring.type,
                         category = recurring.category,

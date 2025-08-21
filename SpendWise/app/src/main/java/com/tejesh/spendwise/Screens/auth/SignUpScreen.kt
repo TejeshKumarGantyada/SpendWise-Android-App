@@ -13,6 +13,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +26,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -70,7 +73,7 @@ fun SignUpScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(32.dp)
-                .verticalScroll(rememberScrollState()), // Make the column scrollable
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
@@ -82,19 +85,9 @@ fun SignUpScreen(
                 contentAlignment = Alignment.Center
             ) {
                 if (profilePicUri != null) {
-                    AsyncImage(
-                        model = profilePicUri,
-                        contentDescription = "Profile Picture",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
+                    AsyncImage(model = profilePicUri, contentDescription = "Profile Picture", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 } else {
-                    Icon(
-                        Icons.Default.Person,
-                        contentDescription = "Default Avatar",
-                        modifier = Modifier.size(60.dp),
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
+                    Icon(Icons.Default.Person, contentDescription = "Default Avatar", modifier = Modifier.size(60.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
                 }
             }
             Text("Add a profile picture", style = MaterialTheme.typography.bodySmall)
@@ -104,8 +97,10 @@ fun SignUpScreen(
             var lastName by remember { mutableStateOf("") }
             var email by remember { mutableStateOf("") }
             var password by remember { mutableStateOf("") }
-            var confirmPassword by remember { mutableStateOf("") } // --- NEW ---
+            var confirmPassword by remember { mutableStateOf("") }
             var phone by remember { mutableStateOf("") }
+            var passwordVisible by remember { mutableStateOf(false) }
+            var confirmPasswordVisible by remember { mutableStateOf(false) }
 
             val passwordsMatch = password == confirmPassword
 
@@ -119,24 +114,27 @@ fun SignUpScreen(
                 value = password,
                 onValueChange = { password = it },
                 label = { MandatoryField("Password") },
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    val image = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) { Icon(image, "Toggle password visibility") }
+                }
             )
             Spacer(modifier = Modifier.height(8.dp))
-            // --- NEW: Confirm Password Field ---
             OutlinedTextField(
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it },
                 label = { MandatoryField("Confirm Password") },
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth(),
                 isError = !passwordsMatch && confirmPassword.isNotEmpty(),
-                supportingText = {
-                    if (!passwordsMatch && confirmPassword.isNotEmpty()) {
-                        Text("Passwords do not match")
-                    }
+                supportingText = { if (!passwordsMatch && confirmPassword.isNotEmpty()) { Text("Passwords do not match") } },
+                trailingIcon = {
+                    val image = if (confirmPasswordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility
+                    IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) { Icon(image, "Toggle password visibility") }
                 }
             )
             Spacer(modifier = Modifier.height(8.dp))
@@ -155,7 +153,6 @@ fun SignUpScreen(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    // --- NEW: Updated validation ---
                     enabled = email.isNotBlank() && password.isNotBlank() && firstName.isNotBlank() && passwordsMatch
                 ) {
                     Text("Create Account")
@@ -165,7 +162,6 @@ fun SignUpScreen(
     }
 }
 
-// --- NEW: Helper composable for mandatory field labels ---
 @Composable
 fun MandatoryField(text: String) {
     Text(

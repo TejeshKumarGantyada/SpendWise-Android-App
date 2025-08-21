@@ -20,9 +20,11 @@ sealed class Screen(
     object Profile : Screen("profile", "Profile", Icons.Outlined.Person) // Add this
     object Recurring : Screen("recurring", "Recurring", Icons.Outlined.Autorenew)
     object Settings : Screen("settings", "Settings", Icons.Outlined.Settings)
+    object Accounts : Screen("accounts", "Accounts", Icons.Outlined.AccountBalance)
     object About : Screen("about", "About", Icons.Outlined.Info)
     object Dashboard : Screen("dashboard", "Dashboard", Icons.Outlined.Dashboard)
 
     object AllTransactions : Screen("all_transactions", "All Transactions") // Add this
+    object Transfer : Screen("transfer", "Transfer", Icons.Default.SwapHoriz)
     object TransactionDetail : Screen("transaction/{id}", "Transaction")
 }

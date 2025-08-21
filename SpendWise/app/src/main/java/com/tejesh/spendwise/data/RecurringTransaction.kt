@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey
 data class RecurringTransaction(
     @PrimaryKey
     val id: String,
+    val accountId: String,
     val amount: Double,
     val type: String,
     val category: String,
@@ -14,5 +15,5 @@ data class RecurringTransaction(
     val frequency: String, // "Daily", "Weekly", "Monthly"
     val nextDueDate: Long // Timestamp of the next occurrence
 ) {
-    constructor() : this("", 0.0, "", "", "", "Monthly", 0L)
+    constructor() : this("", "", 0.0, "", "", "", "Monthly", 0L)
 }
