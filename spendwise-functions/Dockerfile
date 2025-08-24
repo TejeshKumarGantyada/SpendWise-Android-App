@@ -2,11 +2,11 @@ FROM node:18
 
 WORKDIR /usr/src/app
 
-COPY function/package*.json ./ 
+COPY functions/package*.json ./ 
 
 RUN npm install --only=production
 
-COPY function ./ 
+COPY functions ./ 
 
 COPY firebase.json ./ 
 
