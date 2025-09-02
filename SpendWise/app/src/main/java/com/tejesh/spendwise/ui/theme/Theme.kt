@@ -83,7 +83,7 @@ fun SpendWiseTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography, // We'll use the default Typography for now
+        typography = Typography,
         content = content
     )
 }

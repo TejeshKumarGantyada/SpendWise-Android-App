@@ -240,7 +240,7 @@ class AuthViewModel @Inject constructor(
         auth.signOut()
         _user.value = null
         _userProfile.value = UserProfile()
-        _isEmailVerified.value = true // Reset to default
+        _isEmailVerified.value = true
     }
 
     fun deleteAccount() {
@@ -275,7 +275,6 @@ class AuthViewModel @Inject constructor(
                 // If it's a new user, create default categories
                 if (isNewUser) {
                     transactionRepository.createDefaultCategories()
-                    // You can also update their profile with the photo from Google here if you want
                 }
 
                 _user.value = auth.currentUser

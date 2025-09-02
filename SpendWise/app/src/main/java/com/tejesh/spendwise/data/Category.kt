@@ -6,10 +6,9 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "categories")
 data class Category(
     @PrimaryKey
-    val id: String, // A unique ID, e.g., the category name in lowercase
+    val id: String,
     val name: String,
     val type: String // "Expense" or "Income"
 ) {
-    // Required for Firestore deserialization
     constructor() : this("", "", "")
 }

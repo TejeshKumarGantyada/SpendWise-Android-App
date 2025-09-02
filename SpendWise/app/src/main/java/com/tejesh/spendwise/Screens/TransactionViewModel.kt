@@ -16,7 +16,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
 
-// Data classes used by the UI, defined here for clarity or in their own files
 data class AiInsightState(
     val isLoading: Boolean = false,
     val insight: String? = null,
@@ -54,10 +53,10 @@ class TransactionViewModel @Inject constructor(
     val currencySymbol: StateFlow<String> = settingsRepository.currencySymbolFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "₹")
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val budgetsForCurrentMonth: Flow<List<Budget>> = _currentYearMonth.flatMapLatest { yearMonth ->
-        transactionRepository.getBudgetsForMonth(yearMonth)
-    }
+        @OptIn(ExperimentalCoroutinesApi::class)
+        val budgetsForCurrentMonth: Flow<List<Budget>> = _currentYearMonth.flatMapLatest { yearMonth ->  // user for month change in budgets screen
+            transactionRepository.getBudgetsForMonth(yearMonth)
+        }
 
     // --- DERIVED STATE (Calculated flows for the UI) ---
 
@@ -67,10 +66,13 @@ class TransactionViewModel @Inject constructor(
     val accountsForForms: StateFlow<List<Account>> = allAccounts.map { accounts ->
         accounts.filter { it.type != "Loan Taken" }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    // viewmodelscope -> state will be live till viewmodel exists
+    // 5000 -> upstream will stop after 5 sec once the ui stops observing
 
 
 
     val filteredTransactions: StateFlow<List<Transaction>> =
+        // combine -> combine multiple flows into one
         combine(allTransactions, _searchQuery, _filters) { transactions, query, filters ->
             val searchedList = if (query.isBlank()) {
                 transactions
@@ -209,26 +211,84 @@ class TransactionViewModel @Inject constructor(
 
     // --- PUBLIC FUNCTIONS (for UI to call) ---
 
-    fun initializeUserSession() { viewModelScope.launch { transactionRepository.syncAllData(); transactionRepository.startListeners() } }
-    fun clearUserSession() { viewModelScope.launch { transactionRepository.clearLocalData() } }
-    fun setSearchQuery(query: String) { _searchQuery.value = query }
-    fun applyFilters(newFilters: TransactionFilters) { _filters.value = newFilters }
-    fun clearFilters() { _filters.value = TransactionFilters() }
-    fun changeMonth(amount: Int) {
-        val cal = Calendar.getInstance(); val sdf = SimpleDateFormat("yyyy-MM", Locale.getDefault()); val date = sdf.parse(_currentYearMonth.value) ?: Date(); cal.time = date; cal.add(Calendar.MONTH, amount); _currentYearMonth.value = sdf.format(cal.time)
+    fun initializeUserSession() {
+        viewModelScope.launch {
+            transactionRepository.syncAllData(); transactionRepository.startListeners()
+        }
     }
-    fun addBudget(budget: Budget) = viewModelScope.launch { transactionRepository.addBudget(budget) }
-    fun deleteBudget(budget: Budget) = viewModelScope.launch { transactionRepository.deleteBudget(budget) }
-    fun addTransaction(transaction: Transaction) = viewModelScope.launch { transactionRepository.addTransaction(transaction) }
-    fun updateTransaction(transaction: Transaction) = viewModelScope.launch { transactionRepository.updateTransaction(transaction) }
-    fun deleteTransaction(transaction: Transaction) = viewModelScope.launch { transactionRepository.deleteTransaction(transaction) }
+
+    fun clearUserSession() {
+        viewModelScope.launch {
+            transactionRepository.clearLocalData()
+        }
+    }
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun applyFilters(newFilters: TransactionFilters) {
+        _filters.value = newFilters
+    }
+
+    fun clearFilters() {
+        _filters.value = TransactionFilters()
+    }
+
+    fun changeMonth(amount: Int) {
+        val cal = Calendar.getInstance();
+        val sdf = SimpleDateFormat("yyyy-MM", Locale.getDefault());
+        val date = sdf.parse(_currentYearMonth.value) ?: Date(); cal.time = date;
+        cal.add(Calendar.MONTH, amount);
+        _currentYearMonth.value = sdf.format(cal.time)
+    }
+
+    fun addBudget(budget: Budget) = viewModelScope.launch {
+        transactionRepository.addBudget(budget)
+    }
+
+    fun deleteBudget(budget: Budget) = viewModelScope.launch {
+        transactionRepository.deleteBudget(budget)
+    }
+
+    fun addTransaction(transaction: Transaction) = viewModelScope.launch {
+        transactionRepository.addTransaction(transaction)
+    }
+
+    fun updateTransaction(transaction: Transaction) = viewModelScope.launch {
+        transactionRepository.updateTransaction(transaction)
+    }
+
+    fun deleteTransaction(transaction: Transaction) = viewModelScope.launch {
+        transactionRepository.deleteTransaction(transaction)
+    }
+
     fun getTransactionById(id: String): Flow<Transaction?> = transactionRepository.getTransactionById(id)
-    fun addRecurringTransaction(recurring: RecurringTransaction) = viewModelScope.launch { transactionRepository.addRecurringTransaction(recurring) }
-    fun deleteRecurringTransaction(recurring: RecurringTransaction) = viewModelScope.launch { transactionRepository.deleteRecurringTransaction(recurring) }
-    fun addCategory(category: Category) = viewModelScope.launch { transactionRepository.addCategory(category) }
-    fun deleteCategory(category: Category) = viewModelScope.launch { transactionRepository.deleteCategory(category) }
-    fun addAccount(account: Account) = viewModelScope.launch { transactionRepository.addAccount(account) }
-    fun deleteAccount(account: Account) = viewModelScope.launch { transactionRepository.deleteAccount(account) }
+
+    fun addRecurringTransaction(recurring: RecurringTransaction) = viewModelScope.launch {
+        transactionRepository.addRecurringTransaction(recurring)
+    }
+
+    fun deleteRecurringTransaction(recurring: RecurringTransaction) = viewModelScope.launch {
+        transactionRepository.deleteRecurringTransaction(recurring)
+    }
+
+    fun addCategory(category: Category) = viewModelScope.launch {
+        transactionRepository.addCategory(category)
+    }
+
+    fun deleteCategory(category: Category) = viewModelScope.launch {
+        transactionRepository.deleteCategory(category)
+    }
+
+    fun addAccount(account: Account) = viewModelScope.launch {
+        transactionRepository.addAccount(account)
+    }
+
+    fun deleteAccount(account: Account) = viewModelScope.launch {
+        transactionRepository.deleteAccount(account)
+    }
+
     fun addTransfer(
         fromAccountId: String,
         toAccountId: String,
@@ -295,14 +355,21 @@ class TransactionViewModel @Inject constructor(
     }
 
     suspend fun exportTransactionsToCsv(): String {
-        val transactions = transactionRepository.getAllTransactionsSnapshot(); val header = "ID,Date,Type,Category,Amount,Note\n"; val csvData = StringBuilder().append(header); val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()); transactions.forEach { val dateStr = dateFormat.format(Date(it.date)); csvData.append("${it.id},$dateStr,${it.type},${it.category},${it.amount},\"${it.note}\"\n") }; return csvData.toString()
+        val transactions = transactionRepository.getAllTransactionsSnapshot();
+        val header = "ID,Date,Type,Category,Amount,Note\n";
+        val csvData = StringBuilder().append(header);
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+        transactions.forEach {
+            val dateStr = dateFormat.format(Date(it.date));
+            csvData.append("${it.id},$dateStr,${it.type},${it.category},${it.amount},\"${it.note}\"\n")
+        };
+        return csvData.toString()
     }
+
     fun getFinancialInsight() {
         viewModelScope.launch {
             _aiInsightState.value = AiInsightState(isLoading = true)
             try {
-                // --- THIS IS THE NEW, MORE POWERFUL LOGIC ---
-
                 // 1. Get the current state of the account balances.
                 val currentAccountBalances = accountBalances.value
                 if (currentAccountBalances.isEmpty()) {
@@ -327,7 +394,7 @@ class TransactionViewModel @Inject constructor(
                     }
                     .map { mapOf("amount" to it.amount, "type" to it.type, "category" to it.category) }
 
-                if (recentTransactions.size == 0) { // Lower the threshold slightly
+                if (recentTransactions.size == 0) {
                     _aiInsightState.value = AiInsightState(insight = "Keep adding transactions to unlock your first Smart Insight!")
                     return@launch
                 }

@@ -12,9 +12,9 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.util.*
 
-@HiltWorker
+@HiltWorker  // can recive dep from hilt
 class RecurringTransactionWorker @AssistedInject constructor(
-    @Assisted context: Context,
+    @Assisted context: Context, // @Assisted annotation tells Hilt, "Don't worry about providing these; I'll get them from WorkManager at runtime.
     @Assisted workerParams: WorkerParameters,
     private val transactionRepository: TransactionRepository,
 ) : CoroutineWorker(context, workerParams) {
@@ -39,7 +39,7 @@ class RecurringTransactionWorker @AssistedInject constructor(
                 try {
                     // 1. Create a new transaction from the rule
                     val newTransaction = Transaction(
-                        id = "", // Firestore will generate this
+                        id = "",
                         accountId = recurring.accountId,
                         amount = recurring.amount,
                         type = recurring.type,
@@ -54,8 +54,6 @@ class RecurringTransactionWorker @AssistedInject constructor(
                     val newDueDate = getNextDueDate(recurring.nextDueDate, recurring.frequency)
                     val updatedRecurring = recurring.copy(nextDueDate = newDueDate)
 
-                    // THIS IS THE FIX: Use addRecurringTransaction to update the rule,
-                    // as it handles both creating and updating.
                     transactionRepository.addRecurringTransaction(updatedRecurring)
 
                     Log.d(TAG, "Updated next due date for ${recurring.category} to ${Date(newDueDate)}")

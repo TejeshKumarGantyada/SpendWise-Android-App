@@ -14,7 +14,7 @@ import com.tejesh.spendwise.R // Make sure your R file is imported
 
 class ReminderWorker(
     private val context: Context,
-    workerParams: WorkerParameters
+    workerParams: WorkerParameters // can contain configuration and input data for the worker
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -23,10 +23,10 @@ class ReminderWorker(
     }
 
     private fun showNotification() {
-        val channelId = "spendwise_reminder_channel"
+        val channelId = "spendwise_reminder_channel" // uniqueid
 
         val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Replace with a real icon
+            .setSmallIcon(R.mipmap.ic_launcher_foreground)
             .setContentTitle("SpendWise Reminder")
             .setContentText("Don't forget to log your daily transactions!")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -39,7 +39,7 @@ class ReminderWorker(
                 Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
         ) {
-            NotificationManagerCompat.from(context).notify(1, notification)
+            NotificationManagerCompat.from(context).notify(1, notification)  // here 1 is the unique integer id
         }
     }
 }

@@ -22,13 +22,12 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @HiltAndroidApp
-class SpendWiseApp : Application(), Configuration.Provider {
+class SpendWiseApp : Application(), Configuration.Provider  { // Configuration.Provider -> custom config for workmanager
 
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
 
-    // THIS IS THE FIX: The member is a property ('val') with a getter, not a function ('fun').
-    override val workManagerConfiguration: Configuration
+    override val workManagerConfiguration: Configuration // custom config
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
             .build()
@@ -42,7 +41,7 @@ class SpendWiseApp : Application(), Configuration.Provider {
         Log.d(TAG, "Initializing SpendWiseApp")
 
         if (BuildConfig.DEBUG) {
-            configureFirebaseEmulators()
+            configureFirebaseEmulators() // it configures Firebase to connect to local emulators instead of the live production backend, to save costs
         }
 
         createNotificationChannel()

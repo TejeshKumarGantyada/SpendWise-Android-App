@@ -14,7 +14,6 @@ interface BudgetDao {
     @Query("SELECT * FROM budgets WHERE yearMonth = :yearMonth")
     fun getBudgetsForMonth(yearMonth: String): Flow<List<Budget>>
 
-    // THIS IS THE FIX: Add the missing functions for syncing
     @Query("DELETE FROM budgets")
     suspend fun clearAll()
 

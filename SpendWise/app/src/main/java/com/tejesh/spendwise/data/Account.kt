@@ -10,7 +10,7 @@ data class Account(
     val name: String,
     val type: String, // "Bank", "Cash", "Credit Card", "Loan"
     val initialBalance: Double = 0.0,
-    val creditLimit: Double? = null // NEW: Optional field for credit cards
+    val creditLimit: Double? = null
 ) {
     constructor() : this("", "", "Bank", 0.0, null)
 }

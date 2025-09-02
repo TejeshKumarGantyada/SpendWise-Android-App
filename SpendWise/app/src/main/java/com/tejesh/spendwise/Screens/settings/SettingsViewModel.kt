@@ -20,10 +20,9 @@ class SettingsViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = "$" // Default value
+            initialValue = "₹"
         )
 
-    // Function for the UI to call when the user selects a new currency
     fun setCurrencySymbol(symbol: String) {
         viewModelScope.launch {
             settingsRepository.setCurrencySymbol(symbol)

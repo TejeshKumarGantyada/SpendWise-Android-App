@@ -12,7 +12,6 @@ class GoogleAuthUiClient(
     private val context: Context
 ) {
     private val googleSignInOptions = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-        // THIS IS THE FIX: Paste your Web Client ID here
         .requestIdToken("938074637485-t5si1rcvlf92nd1ud7pn4qf5tt3dd3i5.apps.googleusercontent.com")
         .requestEmail()
         .build()

@@ -17,6 +17,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 @Singleton
 class SettingsRepository @Inject constructor(@ApplicationContext private val context: Context) {
 
+    // define the keys for your key-value store.
     private object PreferencesKeys {
         val CURRENCY_SYMBOL = stringPreferencesKey("currency_symbol")
     }
@@ -24,7 +25,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     // Read the currency symbol from DataStore, now defaulting to "₹"
     val currencySymbolFlow: Flow<String> = context.dataStore.data
         .map { preferences ->
-            preferences[PreferencesKeys.CURRENCY_SYMBOL] ?: "₹" // Changed default to Rupee
+            preferences[PreferencesKeys.CURRENCY_SYMBOL] ?: "₹"
         }
 
     // Save the new currency symbol to DataStore

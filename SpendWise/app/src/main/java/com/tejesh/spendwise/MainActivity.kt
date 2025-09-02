@@ -52,7 +52,7 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    @Inject // Inject the client here
+    @Inject
     lateinit var googleAuthUiClient: GoogleAuthUiClient
 
     private val transactionViewModel: TransactionViewModel by viewModels()
@@ -60,7 +60,6 @@ class MainActivity : ComponentActivity() {
     private val settingsViewModel: SettingsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // This MUST be the first call in onCreate for the splash screen to work
         installSplashScreen()
 
         super.onCreate(savedInstanceState)

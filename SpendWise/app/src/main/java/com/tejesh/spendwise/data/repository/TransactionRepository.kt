@@ -40,7 +40,7 @@ class TransactionRepository @Inject constructor(
     val allAccounts = accountDao.getAll()
     fun getBudgetsForMonth(yearMonth: String) = budgetDao.getBudgetsForMonth(yearMonth)
     fun getTransactionById(id: String) = transactionDao.getTransactionById(id)
-    suspend fun getAllTransactionsSnapshot(): List<Transaction> = transactionDao.getAllTransactionsList()
+    suspend fun getAllTransactionsSnapshot(): List<Transaction> = transactionDao.getAllTransactionsList()  // for exporting purpose
     suspend fun getDueRecurringTransactions(today: Long): List<RecurringTransaction> = recurringTransactionDao.getDueTransactions(today)
 
     suspend fun createDefaultCategories() {
@@ -165,7 +165,7 @@ class TransactionRepository @Inject constructor(
         syncTransactions()
         syncRecurringTransactions()
         syncBudgets()
-        syncCategories() // Sync categories
+        syncCategories()
         syncAccounts()
     }
 
@@ -175,7 +175,7 @@ class TransactionRepository @Inject constructor(
         startListeningForChanges()
         startListeningForRecurringChanges()
         startListeningForBudgetChanges()
-        startListeningForCategoryChanges() // Start category listener
+        startListeningForCategoryChanges()
         startListeningForAccountChanges()
     }
 
@@ -183,16 +183,17 @@ class TransactionRepository @Inject constructor(
         transactionDao.clearAll()
         recurringTransactionDao.clearAll()
         budgetDao.clearAll()
-        categoryDao.clearAll() // Clear categories
+        categoryDao.clearAll()
         accountDao.clearAll()
         Log.d(TAG, "Cleared all local data.")
     }
 
+    // one time pull of all data from firestore to local db
     private suspend fun syncAccounts() {
         try {
             val snapshot = getAccountsCollection()?.get()?.await()
-            val accounts = snapshot?.documents?.mapNotNull { doc ->
-                doc.toObject(Account::class.java)?.copy(id = doc.id)
+            val accounts = snapshot?.documents?.mapNotNull { doc ->   // iterate through each non null doc
+                doc.toObject(Account::class.java)?.copy(id = doc.id)  // doc.toObject = maps the feilds in doc to props of acc data class, copy = copies the converted object with the id set to the original doc id from firestore
             }
             if (accounts != null) {
                 accountDao.clearAll()
@@ -203,6 +204,7 @@ class TransactionRepository @Inject constructor(
         }
     }
 
+    // continous pull to local db
     private fun startListeningForAccountChanges() {
         getAccountsCollection()?.addSnapshotListener { snapshot, error ->
             if (error != null) {
@@ -383,7 +385,6 @@ class TransactionRepository @Inject constructor(
         return calendar.timeInMillis
     }
 
-    // --- NEW: Function to handle transfers ---
     suspend fun addTransfer(
         fromAccount: Account,
         toAccount: Account,
@@ -396,22 +397,22 @@ class TransactionRepository @Inject constructor(
 
         // 1. Create the expense transaction
         val expenseTransaction = Transaction(
-            id = "", // Firestore will generate this
+            id = "",
             accountId = fromAccount.id,
             amount = amount,
             type = "Expense",
-            category = "Transfer", // Special category
+            category = "Transfer",
             date = date,
             note = transferNote
         )
 
         // 2. Create the income transaction
         val incomeTransaction = Transaction(
-            id = "", // Firestore will generate this
+            id = "",
             accountId = toAccount.id,
             amount = amount,
             type = "Income",
-            category = "Transfer", // Special category
+            category = "Transfer",
             date = date,
             note = transferNote
         )
@@ -421,7 +422,6 @@ class TransactionRepository @Inject constructor(
         addTransaction(incomeTransaction)
     }
 
-    // --- NEW: A powerful function to create a loan and its corresponding credit ---
     suspend fun createLoanAndCreditTransaction(
         loanAccount: Account,
         creditToAccountId: String
@@ -431,12 +431,11 @@ class TransactionRepository @Inject constructor(
 
         // 2. Create the corresponding income transaction to credit the other account
         val creditTransaction = Transaction(
-            id = "", // Firestore will generate this
+            id = "",
             accountId = creditToAccountId,
-            // --- THIS IS THE FIX: Use the absolute (positive) value of the loan ---
             amount = kotlin.math.abs(loanAccount.initialBalance),
             type = "Income",
-            category = "Loan Credit", // Use a more specific category
+            category = "Loan Credit",
             date = System.currentTimeMillis(),
             note = "Loan received from ${loanAccount.name}"
         )
